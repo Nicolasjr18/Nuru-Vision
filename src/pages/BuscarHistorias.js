@@ -37,7 +37,7 @@ function BuscarHistorias() {
       
       {/* HEADER BONITO */}
       <div style={styles.header}>
-        <h2>🔍 BUSCAR HISTORIAS CLÍNICAS</h2>
+        <h2>🔍 BUSCAR HISTORIAS</h2>
 
         <button style={styles.btnHome} onClick={irHome}>
           🏠 Home
@@ -91,7 +91,7 @@ function BuscarHistorias() {
                       style={styles.btnPDF}
                       onClick={() => generarPDFHistoria(h)}
                     >
-                      PDF
+                      PDF 123
                     </button>
                   </td>
 

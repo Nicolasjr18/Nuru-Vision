@@ -795,7 +795,7 @@ function Historias() {
     });
   }}
 >
-  📄 Generar PDF PRUEBA
+  📄 Generar PDF
 </button>
 
 

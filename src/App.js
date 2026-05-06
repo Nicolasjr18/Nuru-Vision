@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Routes, Route } from "react-router-dom";
 import { auth } from "./firebase";
@@ -42,7 +43,6 @@ function App() {
         }}
       >
         <div>👁️ NURU VISION COL</div>
-
         <div>
           👤 {user.email}
           <button
