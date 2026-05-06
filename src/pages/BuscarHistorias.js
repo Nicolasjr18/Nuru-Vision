@@ -91,7 +91,7 @@ function BuscarHistorias() {
                       style={styles.btnPDF}
                       onClick={() => generarPDFHistoria(h)}
                     >
-                      PDF 123
+                      PDF
                     </button>
                   </td>
 
