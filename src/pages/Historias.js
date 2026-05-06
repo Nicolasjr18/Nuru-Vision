@@ -795,7 +795,7 @@ function Historias() {
     });
   }}
 >
-  📄 Generar PDF
+  📄 Generar PDF 123
 </button>
 
 
