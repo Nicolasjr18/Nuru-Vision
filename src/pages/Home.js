@@ -93,7 +93,7 @@ function Home() {
 
 
       </div>
-
+        <h2 style={{ color: "#0a3d62" }}>Dra. Andrea Caceres Perez</h2>
     </div>
   );
 }
