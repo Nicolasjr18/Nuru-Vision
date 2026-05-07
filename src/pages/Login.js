@@ -2,22 +2,24 @@ import { useState } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../firebase";
 import logo from "../logo.png";
+import { useNavigate } from "react-router-dom";
 
 function Login() {
 
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const login = async () => {
+const login = async () => {
   try {
     setError("");
-
-    console.log("Intentando login con:", email, password);
 
     const res = await signInWithEmailAndPassword(auth, email, password);
 
     console.log("LOGIN OK:", res.user);
+
+    navigate("/"); // 🔥 AQUÍ está la magia
 
   } catch (err) {
     console.log("ERROR COMPLETO:", err);

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { db } from "../firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { db, auth } from "../firebase";
 import { generarPDFHistoria } from "../utils/generarPDFHistoria";
 import { useNavigate } from "react-router-dom";
+import { collection, getDocs, query, where } from "firebase/firestore";
 
 function BuscarHistorias() {
   const navigate = useNavigate();
@@ -11,20 +11,32 @@ function BuscarHistorias() {
   const [historias, setHistorias] = useState([]);
   const [busqueda, setBusqueda] = useState("");
 
-  useEffect(() => {
-    const cargarHistorias = async () => {
-      const snap = await getDocs(collection(db, "historias"));
 
-      const data = snap.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+useEffect(() => {
+  const cargarHistorias = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
 
-      setHistorias(data);
-    };
+    const q = query(
+      collection(db, "historias"),
+      where("ownerId", "==", user.uid)
+    );
 
-    cargarHistorias();
-  }, []);
+    const snap = await getDocs(q);
+
+    const data = snap.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    setHistorias(data);
+  };
+
+  cargarHistorias();
+}, []);
+
+
+
 
   const historiasFiltradas = historias.filter(h =>
     `${h.paciente?.primerNombre || ""} ${h.paciente?.primerApellido || ""} ${h.paciente?.documento || ""}`

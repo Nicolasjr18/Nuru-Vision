@@ -1,6 +1,7 @@
 import { useEffect, useState , useCallback} from "react";
 import { useNavigate } from "react-router-dom";
 import { db } from "../firebase";
+import { auth } from "../firebase";
 import {collection, addDoc, getDocs, deleteDoc, updateDoc, doc,query,where,orderBy} from "firebase/firestore";
 
 function Citas() {
@@ -71,7 +72,16 @@ const [stats, setStats] = useState({
 });
 
 const cargarCitas = async () => {
-  const q = query(collection(db, "citas"), orderBy("fecha", "asc"));
+  const user = auth.currentUser;
+
+  if (!user) return;
+
+  const q = query(
+    collection(db, "citas"),
+    where("ownerId", "==", user.uid),
+    orderBy("fecha", "asc")
+  );
+
   const snap = await getDocs(q);
 
   const data = snap.docs.map((doc) => ({
@@ -99,24 +109,30 @@ const cargarCitas = async () => {
 
 
   setStats({
-    hoy: data.filter(c => c.fecha === hoy).length,
-    total: data.length,
-    proxima: futuras[0] || null,
+  hoy: data.filter(c => c.fecha === hoy).length,
+  total: data.length,
 
-    pendientes: data.filter(c => (c.estado || "Pendiente") === "Pendiente").length,
-    confirmadas: data.filter(c => c.estado === "Confirmada").length,
-    finalizadas: data.filter(c => c.estado === "Finalizada").length,
-    canceladas: data.filter(c => c.estado === "Cancelada").length,
-    noAsistio: data.filter(c => c.estado === "No asistió").length,
-  });
+  proxima: futuras[0] || null,
+
+  pendientes: data.filter(c => (c.estado || "Pendiente") === "Pendiente").length,
+  confirmadas: data.filter(c => c.estado === "Confirmada").length,
+  finalizadas: data.filter(c => c.estado === "Finalizada").length,
+  canceladas: data.filter(c => c.estado === "Cancelada").length,
+  noAsistio: data.filter(c => c.estado === "No asistió").length,
+});
 };
 
   /* ================= GUARDAR O EDITAR CITA ================= */
 
 const validarDisponibilidad = async (fecha, hora) => {
   try {
+    const user = auth.currentUser;
+
+    if (!user) return false;
+
     const q = query(
       collection(db, "citas"),
+      where("ownerId", "==", user.uid), // 🔥 CLAVE
       where("fecha", "==", fecha),
       where("hora", "==", hora)
     );
@@ -132,6 +148,13 @@ const validarDisponibilidad = async (fecha, hora) => {
 
 const guardarCita = async (e) => {
   e.preventDefault();
+
+  const user = auth.currentUser;
+
+  if (!user) {
+    alert("Debes iniciar sesión");
+    return;
+  }
 
   if (!pacienteEncontrado) {
     alert("Debe seleccionar un paciente");
@@ -152,22 +175,22 @@ const guardarCita = async (e) => {
 
   try {
     const datosCita = {
+      ownerId: user.uid, // 🔥 CLAVE
       pacienteId: pacienteEncontrado.id,
       pacienteNombre: pacienteEncontrado.primerNombre,
       pacienteApellido: pacienteEncontrado.primerApellido,
       documento: pacienteEncontrado.documento,
       telefono: pacienteEncontrado.telefono || "",
       sexo: pacienteEncontrado.sexo,
+
       fecha: form.fecha,
       hora: form.hora,
       motivo: form.motivo,
       lugar: form.lugar,
+
+      estado: editandoId ? undefined : "Pendiente",
       createdAt: new Date(),
     };
-
-    if (!editandoId) {
-      datosCita.estado = "Pendiente";
-    }
 
     if (editandoId) {
       await updateDoc(doc(db, "citas", editandoId), datosCita);
@@ -183,7 +206,6 @@ const guardarCita = async (e) => {
     console.error("Error al guardar la cita:", error);
   }
 };
-
 
   /* ================= EFFECTS ================= */
 

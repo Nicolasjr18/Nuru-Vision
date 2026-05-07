@@ -1,3 +1,4 @@
+import { auth } from "../firebase";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { db } from "../firebase";
@@ -48,14 +49,30 @@ const pacientesFiltrados = pacientes.filter((p) => {
   return texto.includes(busqueda.toLowerCase().trim());
 });
   /* ================= CARGAR ================= */
-  const cargar = async () => {
-    const snap = await getDocs(collection(db, "pacientes"));
-    setPacientes(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-  };
+const cargar = async () => {
+  const user = auth.currentUser;
 
-  useEffect(() => {
-    cargar();
-  }, []);
+  if (!user) return;
+
+  const q = query(
+    collection(db, "pacientes"),
+    where("ownerId", "==", user.uid) // ✅ CORREGIDO
+  );
+
+  const snap = await getDocs(q);
+
+  setPacientes(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+};
+
+ useEffect(() => {
+  const unsubscribe = auth.onAuthStateChanged((user) => {
+    if (user) {
+      cargar();
+    }
+  });
+
+  return () => unsubscribe();
+}, []);
 
   const irHome = () => navigate("/");
 
@@ -77,25 +94,30 @@ const pacientesFiltrados = pacientes.filter((p) => {
   };
 
   /* ================= BUSCAR DUPLICADO ================= */
-  const buscarPacienteExistente = async () => {
-    if (!form.tipoDocumento || !form.documento) return;
+const buscarPacienteExistente = async () => {
+  if (!form.tipoDocumento || !form.documento) return;
 
-    const q = query(
-      collection(db, "pacientes"),
-      where("tipoDocumento", "==", form.tipoDocumento),
-      where("documento", "==", form.documento)
-    );
+  const user = auth.currentUser;
+  if (!user) return;
 
-    const snap = await getDocs(q);
+  const q = query(
+    collection(db, "pacientes"),
+    where("ownerId", "==", user.uid),
+    where("tipoDocumento", "==", form.tipoDocumento),
+    where("documento", "==", form.documento)
+  );
 
-    if (!snap.empty) {
-      const existente = snap.docs[0].data();
-      alert("⚠ Paciente ya existe, se cargó la información");
+  const snap = await getDocs(q);
 
-      setEditando(snap.docs[0]);
-      setForm(existente);
-    }
-  };
+  if (!snap.empty) {
+    const docSnap = snap.docs[0];
+
+    alert("⚠ Paciente ya existe, se cargó la información");
+
+    setEditando(docSnap);
+    setForm(docSnap.data());
+  }
+};
 
   /* ================= GUARDAR ================= */
 const guardar = async () => {
@@ -105,10 +127,16 @@ const guardar = async () => {
   }
 
   if (editando) {
-    await updateDoc(doc(db, "pacientes", editando.id), form);
+    await updateDoc(doc(db, "pacientes", editando.id), {...form, ownerId: auth.currentUser.uid});
+
+
     alert("✅ Paciente actualizado exitosamente");
   } else {
-    await addDoc(collection(db, "pacientes"), form);
+    const user = auth.currentUser;
+    await addDoc(collection(db, "pacientes"), {
+  ...form,
+  ownerId: user.uid
+});
     alert("✅ Paciente creado exitosamente");
   }
 

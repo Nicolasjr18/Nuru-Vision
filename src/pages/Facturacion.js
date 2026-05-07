@@ -5,6 +5,8 @@ import { collection, getDocs, addDoc } from "firebase/firestore";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import logo from "../assets/logo.png";
+import { auth } from "../firebase";
+import { query, where } from "firebase/firestore";
 
 const VALOR_CONSULTA = 25000;
 
@@ -35,10 +37,21 @@ function Facturacion() {
     setPacientes(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
   };
 
-  const cargarCotizaciones = async () => {
-    const snap = await getDocs(collection(db, "cotizaciones"));
-    setCotizaciones(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-  };
+const cargarCotizaciones = async () => {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  const q = query(
+    collection(db, "cotizaciones"),
+    where("ownerId", "==", user.uid)
+  );
+
+  const snap = await getDocs(q);
+
+  setCotizaciones(
+    snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+  );
+};
 
   /* ================= BUSCAR PACIENTE ================= */
   const buscarPaciente = () => {
@@ -145,6 +158,7 @@ function Facturacion() {
 
   /* ================= GUARDAR COTIZACIÓN ================= */
   const guardarCotizacion = async () => {
+    const user = auth.currentUser;
     if (!pacienteSel) {
       alert("Debe seleccionar un paciente.");
       return;
@@ -170,7 +184,10 @@ function Facturacion() {
       observaciones: form.observaciones
     };
 
-    await addDoc(collection(db, "cotizaciones"), data);
+    await addDoc(collection(db, "cotizaciones"), {
+  ...data,
+  ownerId: user.uid
+});
     generarPDF(data);
     cargarCotizaciones();
 

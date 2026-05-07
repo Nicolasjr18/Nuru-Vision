@@ -3,13 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { db } from "../firebase";
 import { generarPDFHistoria } from "../utils/generarPDFHistoria";
 import { collection, getDocs, addDoc } from "firebase/firestore";
+import { auth } from "../firebase";
+import { query, where } from "firebase/firestore";
 
-function Historias() {
-  const navigate = useNavigate();
 
-  const irHome = () => navigate("/");
-  
-  const initialForm = {
+
+
+const initialForm = {
     fecha: new Date().toISOString().split("T")[0],
     usaGafas: "",
     lateralidad: "",
@@ -79,23 +79,50 @@ function Historias() {
     observaciones: ""
   };
 
+
+function Historias() {
+  const navigate = useNavigate();
+
+
+  const irHome = () => {
+  setPacienteSel(null);
+  setForm(JSON.parse(JSON.stringify(initialForm)));
+  setHistoriaGuardadaId(null);
+
+  navigate("/");
+};
+  
   
   const [pacienteSel, setPacienteSel] = useState(null);
   const [pacientes, setPacientes] = useState([]);
   const [busqueda, setBusqueda] = useState("");
   const [historiaGuardadaId, setHistoriaGuardadaId] = useState(null);
   const [form, setForm] = useState(initialForm);
- 
+  
 
-  useEffect(() => {
-    const cargarPacientes = async () => {
-      const snap = await getDocs(collection(db, "pacientes"));
-      setPacientes(
-        snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-      );
-    };
-    cargarPacientes();
-  }, []);
+
+useEffect(() => {
+  const unsubscribe = auth.onAuthStateChanged(async (user) => {
+    if (!user) return;
+
+    const q = query(
+      collection(db, "pacientes"),
+      where("ownerId", "==", user.uid)
+    );
+
+    const snap = await getDocs(q);
+
+    const data = snap.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    setPacientes(data);
+  });
+
+  return () => unsubscribe();
+}, []);
+
 
   const pacientesFiltrados = pacientes.filter(p =>
     `${p.primerNombre} ${p.primerApellido} ${p.documento}`
@@ -107,25 +134,35 @@ function Historias() {
   setPacienteSel(p);
 };
 
-
   const resetPaciente = () => {
     setPacienteSel(null);
-    setForm(initialForm);
+    setForm(JSON.parse(JSON.stringify(initialForm)));
+    setHistoriaGuardadaId(null);
   };
 
- const guardarHistoria = async () => {
-  if (!pacienteSel) return;
+const guardarHistoria = async () => {
+  if (!pacienteSel) {
+    alert("⚠️ Debes seleccionar un paciente");
+    return;
+  }
+
+  const user = auth.currentUser;
+
+  if (!user) {
+    alert("⚠️ Debes iniciar sesión");
+    return;
+  }
 
   try {
     const docRef = await addDoc(collection(db, "historias"), {
+      ownerId: user.uid,
       pacienteId: pacienteSel.id,
-      paciente: pacienteSel, // 🔥 guardamos info del paciente
+      paciente: pacienteSel,
       ...form,
       createdAt: new Date()
     });
 
-    setHistoriaGuardadaId(docRef.id); // 🔥 guardamos el ID
-
+    setHistoriaGuardadaId(docRef.id);
     alert("Historia clínica guardada correctamente");
   } catch (error) {
     console.error(error);
